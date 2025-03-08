@@ -1,0 +1,95 @@
+plugins {
+	id 'java'
+	id 'org.flywaydb.flyway' version '9.22.3'
+	id 'org.springframework.boot' version '3.4.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'nu.studer.jooq' version '8.2'
+}
+
+group = 'com.ahmedyu9uf'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-jooq'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
+	implementation 'org.jooq:jooq:3.18.7'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.mapstruct:mapstruct:1.6.3'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.testcontainers:postgresql'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	jooqGenerator 'org.postgresql:postgresql:42.5.1'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+flyway {
+	url = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/reservation'
+	user = System.getenv('DB_USER') ?: 'postgres'
+	password = System.getenv('DB_PASSWORD') ?: 'admin'
+}
+
+jooq {
+	version = '3.18.7'
+	configurations {
+		main {
+			generationTool {
+				jdbc {
+					driver = 'org.postgresql.Driver'
+					url = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/reservation'
+					user = System.getenv('DB_USER') ?: 'postgres'
+					password = System.getenv('DB_PASSWORD') ?: 'admin'
+				}
+				generator {
+					database {
+						name = 'org.jooq.meta.postgres.PostgresDatabase'
+						includes = '.*' // Generates all tables
+					}
+					target {
+						packageName = 'com.ahmedyu9uf.reservation.jooq'
+						directory = 'build/generated-sources/jooq'
+					}
+				}
+			}
+		}
+	}
+}
+
+// Ensure Flyway runs before jOOQ code generation
+tasks.named("generateJooq") {
+	dependsOn("flywayMigrate")
+}
+
+sourceSets {
+	main {
+		java {
+			srcDirs += 'build/generated-sources/jooq'
+		}
+	}
+}
